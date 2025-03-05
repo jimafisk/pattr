@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en" p-data-file-json="data.json">
+	<head>
+		<script src="/pattr.js"></script>
+	</script>
+	<body>
+		<h1 p-text="title"></h1>
+		<hr>
+		<button @click="count++">+</button>
+		<button @click="count--">-</button>
+		<span p-text="count"></span>
+		<span p-show="count > 2">Greater than 2</span>
+		<span p-show="count < 2">Less than 2</span>
+	</body>
+</html>
