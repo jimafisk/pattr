@@ -26,12 +26,12 @@ window.Pattr = {
     },
 
     initScopes(element) {
-        // Walk the DOM to find and initialize nested components
         this.walkDom(element, el => {
             if (el === this.root) return; // Skip root, already initialized
 
             if (el.hasAttribute('p-data') || el.hasAttribute('p-data-file-json')) {
                 this.createScope(el);
+                this.refreshDom(el); // Initial render with child data
             }
         });
     },
@@ -45,6 +45,7 @@ window.Pattr = {
             this.getDataFileJSON(dataFile).then(rawData => {
                 data = this.evaluateData(rawData, parentScope);
                 const scope = new Scope(data, parentScope, this);
+                scope.element = element;
                 this.scopes.set(element, scope);
                 this.registerListeners(element, scope);
                 this.refreshDom(element);
@@ -56,6 +57,7 @@ window.Pattr = {
         }
 
         const scope = new Scope(data, parentScope, this);
+        scope.element = element;
         this.scopes.set(element, scope);
         this.registerListeners(element, scope);
     },
@@ -83,7 +85,7 @@ window.Pattr = {
             Array.from(el.attributes).forEach(attribute => {
                 if (!attribute.name.startsWith('@')) return;
 
-                const event = attribute.name.replace('@', ''); // e.g., "click", "mouseover"
+                const event = attribute.name.replace('@', '');
                 const handler = new Function('scope', `with (scope.data) { ${attribute.value} }`);
                 el.addEventListener(event, () => {
                     handler(scope);
@@ -106,15 +108,9 @@ window.Pattr = {
             });
         });
 
-        // Cascade updates to children
+        // Cascade refresh to children without re-evaluating their p-data
         scope.children.forEach(childScope => {
-            const childElement = childScope.element;
-            const newDataExpr = childElement.getAttribute('p-data');
-            if (newDataExpr) {
-                const newData = this.evaluateData(newDataExpr, scope);
-                Object.assign(childScope.data, newData); // Update child data
-            }
-            this.refreshDom(childElement); // Recursively refresh child
+            this.refreshDom(childScope.element);
         });
     },
 
