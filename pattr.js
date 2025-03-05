@@ -10,7 +10,8 @@ window.Pattr = {
 
     async start() {
         this.root = document.querySelector('[p-data-file-json]');
-        this.rawData = await this.getInitialData()
+		this.dataFile = this.root.getAttribute('p-data-file-json');
+        this.rawData = await this.getDataFileJSON(this.dataFile)
         this.data = this.observe(this.rawData)
         this.registerListeners()
         this.refreshDom()
@@ -63,15 +64,20 @@ window.Pattr = {
         }
     },
 
-    async getInitialData() {
-        this.rawData;
-        this.dataFile = this.root.getAttribute('p-data-file-json');
-		await fetch(this.dataFile)
-			.then(response => response.json())
-			.then(data => this.rawData = data)
-			.catch(error => console.error('Error:', error));
-		return this.rawData;
-    }
+	async getDataFileJSON(dataFile) {
+		let rawData = null;
+		try {
+			const response = await fetch(dataFile);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			rawData = await response.json();
+		} catch (error) {
+			console.error('Error fetching or parsing data:', error);
+			rawData = null; // Ensure rawData is null in case of error
+		}
+		return rawData;
+	}
 }
 
 window.Pattr.start()
