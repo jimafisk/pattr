@@ -9,29 +9,29 @@ window.Pattr = {
     },
 
     async start() {
-        this.scopes = new WeakMap(); // Map elements to their Scope instances
+        this.scopes = new WeakMap();
+        this.bindings = new WeakMap(); // Cache directive bindings
         this.root = document.querySelector('[p-data-file-json]');
         if (!this.root) return;
 
-        // Initialize the root scope
         this.dataFile = this.root.getAttribute('p-data-file-json');
         const rawData = await this.getDataFileJSON(this.dataFile);
         if (rawData) {
-            const rootScope = new Scope(rawData, null, this);
+            const rootScope = new Scope(rawData, null, this, null);
             this.scopes.set(this.root, rootScope);
-            this.registerListeners(this.root, rootScope);
+            this.registerBindings(this.root, rootScope);
             this.initScopes(this.root);
-            this.refreshDom(this.root);
+            this.refreshDom(this.root, new Set());
         }
     },
 
     initScopes(element) {
         this.walkDom(element, el => {
-            if (el === this.root) return; // Skip root, already initialized
+            if (el === this.root) return;
 
             if (el.hasAttribute('p-data') || el.hasAttribute('p-data-file-json')) {
                 this.createScope(el);
-                this.refreshDom(el); // Initial render with child data
+                this.refreshDom(el, new Set());
             }
         });
     },
@@ -44,22 +44,22 @@ window.Pattr = {
             const dataFile = element.getAttribute('p-data-file-json');
             this.getDataFileJSON(dataFile).then(rawData => {
                 data = this.evaluateData(rawData, parentScope);
-                const scope = new Scope(data, parentScope, this);
+                const scope = new Scope(data, parentScope, this, element.getAttribute('p-data'));
                 scope.element = element;
                 this.scopes.set(element, scope);
-                this.registerListeners(element, scope);
-                this.refreshDom(element);
+                this.registerBindings(element, scope);
+                this.refreshDom(element, new Set());
             });
-            return; // Defer until data is loaded
+            return;
         } else if (element.hasAttribute('p-data')) {
             const dataExpr = element.getAttribute('p-data');
             data = this.evaluateData(dataExpr, parentScope);
         }
 
-        const scope = new Scope(data, parentScope, this);
+        const scope = new Scope(data, parentScope, this, element.getAttribute('p-data'));
         scope.element = element;
         this.scopes.set(element, scope);
-        this.registerListeners(element, scope);
+        this.registerBindings(element, scope);
     },
 
     findParentScope(element) {
@@ -80,37 +80,43 @@ window.Pattr = {
         }
     },
 
-    registerListeners(element, scope) {
+    registerBindings(element, scope) {
+        const bindings = [];
         this.walkDom(element, el => {
             Array.from(el.attributes).forEach(attribute => {
-                if (!attribute.name.startsWith('@')) return;
-
-                const event = attribute.name.replace('@', '');
-                const handler = new Function('scope', `with (scope.data) { ${attribute.value} }`);
-                el.addEventListener(event, () => {
-                    handler(scope);
-                    this.refreshDom(element); // Refresh only this scope’s DOM
-                });
+                if (attribute.name.startsWith('@')) {
+                    const event = attribute.name.replace('@', '');
+                    const handler = new Function('scope', `with (scope.data) { ${attribute.value} }`);
+                    el.addEventListener(event, () => {
+                        handler(scope);
+                        this.refreshDom(element, new Set());
+                    });
+                } else if (this.directives[attribute.name]) {
+                    bindings.push({ el, directive: attribute.name, expr: attribute.value });
+                }
             });
         });
+        this.bindings.set(scope, bindings);
     },
 
-    refreshDom(element) {
+    refreshDom(element, changedKeys) {
         const scope = this.scopes.get(element);
         if (!scope) return;
 
-        this.walkDom(element, el => {
-            Array.from(el.attributes).forEach(attribute => {
-                if (!Object.keys(this.directives).includes(attribute.name)) return;
+        // Re-evaluate p-data if parent changed a relevant key
+        if (scope.dataExpr && changedKeys.size > 0) {
+            const newData = this.evaluateData(scope.dataExpr, scope.parent);
+            scope.updateFromParent(newData, changedKeys);
+        }
 
-                const value = this.evaluateInScope(attribute.value, scope);
-                this.directives[attribute.name](el, value);
-            });
+        const bindings = this.bindings.get(scope) || [];
+        bindings.forEach(binding => {
+            const value = this.evaluateInScope(binding.expr, scope);
+            this.directives[binding.directive](binding.el, value);
         });
 
-        // Cascade refresh to children without re-evaluating their p-data
         scope.children.forEach(childScope => {
-            this.refreshDom(childScope.element);
+            this.refreshDom(childScope.element, changedKeys);
         });
     },
 
@@ -148,18 +154,19 @@ window.Pattr = {
     },
 };
 
-// Scope class to manage reactive data and hierarchy
 class Scope {
-    constructor(data, parentScope, framework) {
+    constructor(data, parentScope, framework, dataExpr) {
         this.parent = parentScope;
         this.framework = framework;
         this.children = [];
-        this.element = null; // Set by createScope
+        this.element = null;
+        this.dataExpr = dataExpr; // Store p-data expression
         this.data = this.observe(data);
         if (parentScope) parentScope.children.push(this);
     }
 
     observe(initialData) {
+        const scope = this;
         return new Proxy({ ...initialData }, {
             get: (target, key) => {
                 return key in target ? target[key] : this.parent?.data[key];
@@ -167,11 +174,20 @@ class Scope {
             set: (target, key, value) => {
                 target[key] = value;
                 if (this.element) {
-                    this.framework.refreshDom(this.element); // Refresh only this scope
+                    const changedKeys = new Set([key]);
+                    this.framework.refreshDom(this.element, changedKeys);
                 }
                 return true;
             },
         });
+    }
+
+    updateFromParent(newData, changedKeys) {
+        const oldCount = this.data.count;
+        Object.assign(this.data, newData);
+        if (this.data.count !== oldCount) {
+            changedKeys.add('count');
+        }
     }
 }
 

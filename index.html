@@ -12,7 +12,7 @@
 		<span p-show="count > 2">Greater than 2</span>
 		<span p-show="count < 2">Less than 2</span>
 		<hr>
-		<section p-data="{count: 5}">
+		<section p-data="{count: count * 2}">
 			<div p-text="count"></div>
 			<button @click="count++">+</button>
 			<button @click="count--">-</button>
