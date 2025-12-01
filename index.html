@@ -1,8 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" p-data-file-json="data.json">
+<html lang="en">
     <head>
-        <script src="/pattr.js"></script>
-    </script>
+        <script src="/pattr.js" defer></script>
+        <script id="p-root-data" type="application/json">
+            {
+                "title": "This is pattr.",
+                "count": 2
+            }
+        </script>
+    </head>
     <body>
         <h1 p-text="title"></h1>
         <hr>
@@ -13,13 +19,13 @@
         <span p-show="count > 2">Greater than 2</span>
         <span p-show="count < 2">Less than 2</span>
         <hr>
-        <section p-data="{count: count * 2}">
+        <section p-id="ek753" p-data="count = count * 2;">
             <div>Child Component (*2):</div>
             <div p-text="count"></div>
             <button @click="count++">+</button>
             <button @click="count--">-</button>
             <hr>
-            <section p-data="{count: count + 1}">
+            <section p-id="xf9g3" p-data="count = count + 1;">
                 <div>Grandchild Component (+1):</div>
                 <div p-text="count"></div>
                 <button @click="count++">+</button>
