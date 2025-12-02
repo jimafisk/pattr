@@ -88,7 +88,7 @@ window.Pattr = {
                 // Re-execute p-data expression to recalculate derived values
                 // We need to read from parent scope but write to current scope's target
                 const pDataExpr = el.getAttribute('p-data');
-                if (pDataExpr) {
+                if (pDataExpr && currentScope && currentScope._p_target) {
                     try {
                         // Create temp scope that reads from parent but writes to current
                         const parentProto = Object.getPrototypeOf(currentScope._p_target);
@@ -107,6 +107,7 @@ window.Pattr = {
                                 return true;
                             }
                         });
+                        void tempScope; // Explicit reference for linter (used in eval below)
                         eval(`with (tempScope) { ${pDataExpr} }`);
                     } catch (e) {
                         console.error(`Error re-executing p-data expression:`, e);
