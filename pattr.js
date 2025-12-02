@@ -82,9 +82,36 @@ window.Pattr = {
                     console.error(`Error executing p-data expression on ${dataId}:`, e);
                 }
             } else {
-                // B. REFRESH PHASE (Read Stored Scope)
-                // If p-data is present, the scope MUST be stored from the hydration phase.
-                currentScope = el._scope; 
+                // B. REFRESH PHASE (Re-evaluate with stored scope)
+                currentScope = el._scope;
+                
+                // Re-execute p-data expression to recalculate derived values
+                // We need to read from parent scope but write to current scope's target
+                const pDataExpr = el.getAttribute('p-data');
+                if (pDataExpr) {
+                    try {
+                        // Create temp scope that reads from parent but writes to current
+                        const parentProto = Object.getPrototypeOf(currentScope._p_target);
+                        const tempScope = new Proxy(currentScope._p_target, {
+                            get: (target, key) => {
+                                // Read from parent if key doesn't exist locally, or if it's a special key
+                                if (key === '_p_target' || key === '_p_children' || key === '_p_data') {
+                                    return target[key];
+                                }
+                                // For regular properties, read from parent scope
+                                return parentProto[key];
+                            },
+                            set: (target, key, value) => {
+                                // Write to local target, bypassing proxy
+                                target[key] = value;
+                                return true;
+                            }
+                        });
+                        eval(`with (tempScope) { ${pDataExpr} }`);
+                    } catch (e) {
+                        console.error(`Error re-executing p-data expression:`, e);
+                    }
+                }
             }
             
         }
