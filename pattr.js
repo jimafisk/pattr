@@ -82,35 +82,60 @@ window.Pattr = {
                     console.error(`Error executing p-data expression on ${dataId}:`, e);
                 }
             } else {
-                // B. REFRESH PHASE (Re-evaluate with stored scope)
+                // B. REFRESH PHASE (Use stored scope)
                 currentScope = el._scope;
                 
-                // Re-execute p-data expression to recalculate derived values
-                // We need to read from parent scope but write to current scope's target
-                const pDataExpr = el.getAttribute('p-data');
-                if (pDataExpr && currentScope && currentScope._p_target) {
-                    try {
-                        // Create temp scope that reads from parent but writes to current
+                // If scope wasn't stored during hydration, use parent scope
+                if (!currentScope) {
+                    currentScope = parentScope;
+                } else {
+                    // Check if parent values changed - if so, re-execute p-data
+                    const pDataExpr = el.getAttribute('p-data');
+                    if (pDataExpr && currentScope._p_target) {
+                        // Get parent scope
                         const parentProto = Object.getPrototypeOf(currentScope._p_target);
-                        const tempScope = new Proxy(currentScope._p_target, {
-                            get: (target, key) => {
-                                // Read from parent if key doesn't exist locally, or if it's a special key
-                                if (key === '_p_target' || key === '_p_children' || key === '_p_data') {
-                                    return target[key];
+                        
+                        // Check if any parent values changed by comparing with stored snapshot
+                        let parentChanged = false;
+                        if (!el._parentSnapshot) {
+                            el._parentSnapshot = {};
+                        }
+                        
+                        // Create a snapshot of current parent values
+                        const currentParentSnapshot = {};
+                        for (let key in parentProto) {
+                            if (!key.startsWith('_p_')) {
+                                currentParentSnapshot[key] = parentProto[key];
+                                if (el._parentSnapshot[key] !== parentProto[key]) {
+                                    parentChanged = true;
                                 }
-                                // For regular properties, read from parent scope
-                                return parentProto[key];
-                            },
-                            set: (target, key, value) => {
-                                // Write to local target, bypassing proxy
-                                target[key] = value;
-                                return true;
                             }
-                        });
-                        void tempScope; // Explicit reference for linter (used in eval below)
-                        eval(`with (tempScope) { ${pDataExpr} }`);
-                    } catch (e) {
-                        console.error(`Error re-executing p-data expression:`, e);
+                        }
+                        
+                        // If parent changed, re-execute p-data expression
+                        if (parentChanged) {
+                            try {
+                                const tempScope = new Proxy(currentScope._p_target, {
+                                    get: (target, key) => {
+                                        if (key === '_p_target' || key === '_p_children' || key === '_p_data') {
+                                            return target[key];
+                                        }
+                                        return parentProto[key];
+                                    },
+                                    set: (target, key, value) => {
+                                        target[key] = value;
+                                        return true;
+                                    }
+                                });
+                                void tempScope; // Explicit reference for linter
+                                eval(`with (tempScope) { ${pDataExpr} }`);
+                            } catch (e) {
+                                console.error(`Error re-executing p-data expression:`, e);
+                            }
+                            
+                            // Update snapshot after successful execution
+                            el._parentSnapshot = currentParentSnapshot;
+                        }
                     }
                 }
             }
