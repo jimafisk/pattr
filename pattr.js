@@ -3,6 +3,9 @@ window.Pattr = {
         'p-text': (el, value) => {
             el.innerText = value
         },
+        'p-html': (el, value) => {
+            el.innerHTML = value
+        },
         'p-show': (el, value) => {
             el.style.display = value ? 'block' : 'none'
         },

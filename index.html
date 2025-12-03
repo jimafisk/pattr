@@ -5,14 +5,14 @@
         <script src="/pattr.js" defer></script>
         <script id="p-root-data" type="application/json">
             {
-                "title": "This is pattr.",
+                "title": "This is <strong><em>Pattr</em></strong>.",
                 "name": "Bob",
                 "count": 2
             }
         </script>
     </head>
     <body>
-        <h1 p-text="title"></h1>
+        <h1 p-html="title"></h1>
         <hr>
         <div>Parent Component:</div>
         <button @click="count++">+</button>
