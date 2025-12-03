@@ -6,32 +6,35 @@
         <script id="p-root-data" type="application/json">
             {
                 "title": "This is pattr.",
+                "name": "Bob",
                 "count": 2
             }
         </script>
     </head>
     <body>
         <h1 p-text="title"></h1>
-        <img src="/pattr.svg" alt="Pattr logo" />
         <hr>
         <div>Parent Component:</div>
         <button @click="count++">+</button>
         <button @click="count--">-</button>
-        <span p-text="count"></span>
+        <div p-text="`${name} can count to: ${count}`"></div>
         <span p-show="count > 2">Greater than 2</span>
         <span p-show="count < 2">Less than 2</span>
+        <input type="text" p-model="name" />
         <hr>
-        <section p-id="ek753" p-data="count = count * 2;">
+        <section p-id="ek753" p-data="count = count * 2; name = name + 'o';">
             <div>Child Component (*2):</div>
-            <div p-text="count"></div>
+            <div p-text="`${name} can count to: ${count}`"></div>
             <button @click="count++">+</button>
             <button @click="count--">-</button>
+            <input type="text" p-model="name" />
             <hr>
-            <section p-id="xf9g3" p-data="count = count + 1;">
+            <section p-id="xf9g3" p-data="count = count + 1; name = name + ' Burns';">
                 <div>Grandchild Component (+1):</div>
-                <div p-text="count"></div>
+                <div p-text="`${name} can count to: ${count}`"></div>
                 <button @click="count++">+</button>
                 <button @click="count--">-</button>
+                <input type="text" p-model="name" />
             </section>
         </section>
     </body>

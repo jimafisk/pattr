@@ -6,6 +6,9 @@ window.Pattr = {
         'p-show': (el, value) => {
             el.style.display = value ? 'block' : 'none'
         },
+        'p-model': (el, value) => {
+            el.value = value
+        },
     },
 
     async start() {
@@ -159,7 +162,14 @@ window.Pattr = {
                     });
                 }
                 
-                // 2. Directive Evaluation (Both Hydration and Refresh)
+                // 2. p-model Two-Way Binding Setup (Hydration Only)
+                if (isHydrating && attribute.name === 'p-model') {
+                    el.addEventListener('input', (e) => {
+                        eval(`with (el._scope) { ${attribute.value} = e.target.value }`);
+                    });
+                }
+                
+                // 3. Directive Evaluation (Both Hydration and Refresh)
                 if (Object.keys(this.directives).includes(attribute.name)) {
                     const value = eval(`with (currentScope) { (${attribute.value}) }`);
                     this.directives[attribute.name](el, value);
