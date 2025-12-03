@@ -92,32 +92,34 @@ window.Pattr = {
                 if (!currentScope) {
                     currentScope = parentScope;
                 } else {
-                    // Check if parent values changed - if so, re-execute p-data
+                    // Check if parent values changed - if so, selectively re-execute p-data
                     const pDataExpr = el.getAttribute('p-data');
                     if (pDataExpr && currentScope._p_target) {
                         // Get parent scope
                         const parentProto = Object.getPrototypeOf(currentScope._p_target);
                         
-                        // Check if any parent values changed by comparing with stored snapshot
-                        let parentChanged = false;
+                        // Track which parent variables changed
+                        const changedParentVars = new Set();
                         if (!el._parentSnapshot) {
                             el._parentSnapshot = {};
                         }
                         
-                        // Create a snapshot of current parent values
-                        const currentParentSnapshot = {};
+                        // Check which specific parent values changed
                         for (let key in parentProto) {
                             if (!key.startsWith('_p_')) {
-                                currentParentSnapshot[key] = parentProto[key];
                                 if (el._parentSnapshot[key] !== parentProto[key]) {
-                                    parentChanged = true;
+                                    changedParentVars.add(key);
                                 }
+                                el._parentSnapshot[key] = parentProto[key];
                             }
                         }
                         
-                        // If parent changed, re-execute p-data expression
-                        if (parentChanged) {
+                        // If any parent changed, selectively re-execute statements
+                        if (changedParentVars.size > 0) {
                             try {
+                                // Split p-data into individual statements
+                                const statements = pDataExpr.split(';').map(s => s.trim()).filter(s => s);
+                                
                                 const tempScope = new Proxy(currentScope._p_target, {
                                     get: (target, key) => {
                                         if (key === '_p_target' || key === '_p_children' || key === '_p_data') {
@@ -131,13 +133,29 @@ window.Pattr = {
                                     }
                                 });
                                 void tempScope; // Explicit reference for linter
-                                eval(`with (tempScope) { ${pDataExpr} }`);
+                                
+                                // Only re-execute statements that depend on changed parent variables
+                                statements.forEach(stmt => {
+                                    // Check if statement uses any changed parent variable on RHS
+                                    let shouldExecute = false;
+                                    changedParentVars.forEach(varName => {
+                                        // Simple heuristic: check if variable appears on right side of assignment
+                                        const parts = stmt.split('=');
+                                        if (parts.length > 1) {
+                                            const rhs = parts.slice(1).join('=');
+                                            if (rhs.includes(varName)) {
+                                                shouldExecute = true;
+                                            }
+                                        }
+                                    });
+                                    
+                                    if (shouldExecute) {
+                                        eval(`with (tempScope) { ${stmt} }`);
+                                    }
+                                });
                             } catch (e) {
                                 console.error(`Error re-executing p-data expression:`, e);
                             }
-                            
-                            // Update snapshot after successful execution
-                            el._parentSnapshot = currentParentSnapshot;
                         }
                     }
                 }
