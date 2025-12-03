@@ -1,25 +1,23 @@
 window.Pattr = {
     directives: {
         'p-text': (el, value, modifiers = {}) => {
-            el.innerText = value
+            let text = String(value);
+            
+            // Apply trim modifier
+            if (modifiers.trim && modifiers.trim.length > 0) {
+                const maxLength = parseInt(modifiers.trim[0]) || 100;
+                if (text.length > maxLength) {
+                    text = text.substring(0, maxLength) + '...';
+                }
+            }
+            
+            el.innerText = text;
         },
         'p-html': (el, value, modifiers = {}) => {
             let html = value;
             
-            // Apply modifiers
-            if (modifiers.trim) {
-                const maxLength = modifiers.trim[0] ? parseInt(modifiers.trim[0]) : 100;
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = html;
-                let text = tempDiv.textContent || tempDiv.innerText || '';
-                if (text.length > maxLength) {
-                    text = text.substring(0, maxLength) + '...';
-                }
-                html = text;
-            }
-            
+            // Apply allow filter first (if present)
             if (modifiers.allow && modifiers.allow.length > 0) {
-                // Whitelist allowed tags
                 const allowedTags = modifiers.allow;
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = html;
@@ -49,6 +47,58 @@ window.Pattr = {
                     if (filteredChild) filtered.appendChild(filteredChild);
                 });
                 html = filtered.innerHTML;
+            }
+            
+            // Apply trim modifier (counts only text, preserves HTML tags)
+            if (modifiers.trim && modifiers.trim.length > 0) {
+                const maxLength = parseInt(modifiers.trim[0]) || 100;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                let charCount = 0;
+                let truncated = false;
+                
+                // Recursively traverse and trim while preserving HTML structure
+                const trimNode = (node) => {
+                    if (truncated) return null;
+                    
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const text = node.textContent;
+                        const remaining = maxLength - charCount;
+                        
+                        if (text.length <= remaining) {
+                            charCount += text.length;
+                            return node.cloneNode();
+                        } else {
+                            // This text node exceeds limit
+                            truncated = true;
+                            const trimmedText = text.substring(0, remaining) + '...';
+                            return document.createTextNode(trimmedText);
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        const cloned = node.cloneNode(false);
+                        for (let child of node.childNodes) {
+                            const trimmedChild = trimNode(child);
+                            if (trimmedChild) {
+                                cloned.appendChild(trimmedChild);
+                            }
+                            if (truncated) break;
+                        }
+                        return cloned;
+                    }
+                    return node.cloneNode();
+                };
+                
+                const result = document.createElement('div');
+                for (let child of tempDiv.childNodes) {
+                    const trimmedChild = trimNode(child);
+                    if (trimmedChild) {
+                        result.appendChild(trimmedChild);
+                    }
+                    if (truncated) break;
+                }
+                
+                html = result.innerHTML;
             }
             
             el.innerHTML = html;

@@ -5,19 +5,19 @@
         <script src="/pattr.js" defer></script>
         <script id="p-root-data" type="application/json">
             {
-                "title": "This is <strong><em>Pattr</em></strong><iframe src='https://plenti.co' />.",
+                "title": "This is <strong><em>Pattr</em></strong><iframe src='https://plenti.co' />. And it's really cool!",
                 "name": "Bob",
                 "count": 2
             }
         </script>
     </head>
     <body>
-        <h1 p-html:allow.strong.em="title"></h1>
+        <h1 p-html:allow.strong.em:trim.18="title"></h1>
         <hr>
         <div>Parent Component:</div>
         <button @click="count++">+</button>
         <button @click="count--">-</button>
-        <div p-text="`${name} can count to: ${count}`"></div>
+        <div p-text:trim.25="`${name} can count to: ${count}`"></div>
         <span p-show="count > 2">Greater than 2</span>
         <span p-show="count < 2">Less than 2</span>
         <input type="text" p-model="name" />
