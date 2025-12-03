@@ -1,10 +1,57 @@
 window.Pattr = {
     directives: {
-        'p-text': (el, value) => {
+        'p-text': (el, value, modifiers = {}) => {
             el.innerText = value
         },
-        'p-html': (el, value) => {
-            el.innerHTML = value
+        'p-html': (el, value, modifiers = {}) => {
+            let html = value;
+            
+            // Apply modifiers
+            if (modifiers.trim) {
+                const maxLength = modifiers.trim[0] ? parseInt(modifiers.trim[0]) : 100;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                let text = tempDiv.textContent || tempDiv.innerText || '';
+                if (text.length > maxLength) {
+                    text = text.substring(0, maxLength) + '...';
+                }
+                html = text;
+            }
+            
+            if (modifiers.allow && modifiers.allow.length > 0) {
+                // Whitelist allowed tags
+                const allowedTags = modifiers.allow;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Recursively filter elements
+                const filterNode = (node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        const tagName = node.tagName.toLowerCase();
+                        if (!allowedTags.includes(tagName)) {
+                            // Replace with text content
+                            return document.createTextNode(node.textContent);
+                        }
+                        // Keep element but filter children
+                        const filtered = node.cloneNode(false);
+                        Array.from(node.childNodes).forEach(child => {
+                            const filteredChild = filterNode(child);
+                            if (filteredChild) filtered.appendChild(filteredChild);
+                        });
+                        return filtered;
+                    }
+                    return node.cloneNode();
+                };
+                
+                const filtered = document.createElement('div');
+                Array.from(tempDiv.childNodes).forEach(child => {
+                    const filteredChild = filterNode(child);
+                    if (filteredChild) filtered.appendChild(filteredChild);
+                });
+                html = filtered.innerHTML;
+            }
+            
+            el.innerHTML = html;
         },
         'p-show': (el, value) => {
             el.style.display = value ? 'block' : 'none'
@@ -12,6 +59,24 @@ window.Pattr = {
         'p-model': (el, value) => {
             el.value = value
         },
+    },
+    
+    parseDirectiveModifiers(attrName) {
+        // Parse: p-html:trim.300:allow.p.h1.h2
+        // Returns: { directive: 'p-html', modifiers: { trim: ['300'], allow: ['p', 'h1', 'h2'] } }
+        const parts = attrName.split(':');
+        const directive = parts[0];
+        const modifiers = {};
+        
+        // Parse each modifier group
+        for (let i = 1; i < parts.length; i++) {
+            const modParts = parts[i].split('.');
+            const modName = modParts[0];
+            const modValues = modParts.slice(1);
+            modifiers[modName] = modValues;
+        }
+        
+        return { directive, modifiers };
     },
 
     async start() {
@@ -191,9 +256,11 @@ window.Pattr = {
                 }
                 
                 // 3. Directive Evaluation (Both Hydration and Refresh)
-                if (Object.keys(this.directives).includes(attribute.name)) {
+                // Check if attribute is a directive (with or without modifiers)
+                const parsed = this.parseDirectiveModifiers(attribute.name);
+                if (Object.keys(this.directives).includes(parsed.directive)) {
                     const value = eval(`with (currentScope) { (${attribute.value}) }`);
-                    this.directives[attribute.name](el, value);
+                    this.directives[parsed.directive](el, value, parsed.modifiers);
                 }
             });
         }
