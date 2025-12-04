@@ -10,6 +10,9 @@
                 "count": 2
             }
         </script>
+        <script id="p-local-data" type="application/json">
+            { "show": false }
+        </script>
     </head>
     <body>
         <h1 p-html:allow.strong.em:trim.18="title"></h1>
@@ -37,5 +40,16 @@
                 <input type="text" p-model="name" />
             </section>
         </section>
+        <hr>
+        <button @click="show = !show">
+            <span p-show="!show">Show cats</span>
+            <span p-show="show">Hide cats</span>
+        </button>
+        <div p-show="show">
+            <h3>Cats</h3>
+            <div>Ralph</div>
+            <div>Betsy</div>
+            <div>Drago</div>
+        </div>
     </body>
 </html>
