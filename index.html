@@ -11,7 +11,10 @@
             }
         </script>
         <script id="p-local-data" type="application/json">
-            { "show": false }
+            {
+                "cats": false,
+                "emoji": false
+            }
         </script>
     </head>
     <body>
@@ -23,7 +26,8 @@
         <div p-text:trim.25="`${name} can count to: ${count}`"></div>
         <span p-show="count > 2">Greater than 2</span>
         <span p-show="count < 2">Less than 2</span>
-        <input type="text" p-model="name" />
+        <input type="text" p-model="name" p-on:focus="emoji = true" p-on:blur="emoji = false" />
+        <span p-show="emoji">🤓</span>
         <hr>
         <section p-id="ek753" p-scope="count = count * 2; name = name + 'o';">
             <div>Child Component (*2):</div>
@@ -41,11 +45,11 @@
             </section>
         </section>
         <hr>
-        <button p-on:click="show = !show">
-            <span p-show="!show">Show cats</span>
-            <span p-show="show">Hide cats</span>
+        <button p-on:click="cats = !cats">
+            <span p-show="!cats">Show cats</span>
+            <span p-show="cats">Hide cats</span>
         </button>
-        <div p-show="show">
+        <div p-show="cats">
             <h3>Cats</h3>
             <div>Ralph</div>
             <div>Betsy</div>

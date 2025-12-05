@@ -104,7 +104,7 @@ window.Pattr = {
             el.innerHTML = html;
         },
         'p-show': (el, value) => {
-            el.style.display = value ? 'block' : 'none'
+            el.style.display = value ? 'initial' : 'none'
         },
         'p-model': (el, value) => {
             el.value = value
