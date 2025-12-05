@@ -49,11 +49,17 @@
             <span p-show="!cats">Show cats</span>
             <span p-show="cats">Hide cats</span>
         </button>
-        <div p-show="cats">
+        <div class="cats-list" p-style="cats ? 'max-height: 200px' : 'max-height: 0'">
             <h3>Cats</h3>
             <div>Ralph</div>
             <div>Betsy</div>
             <div>Drago</div>
         </div>
+        <style>
+            .cats-list {
+                overflow: hidden;
+                transition: max-height 0.5s ease-out;
+            }
+        </style>
     </body>
 </html>

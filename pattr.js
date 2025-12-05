@@ -106,6 +106,25 @@ window.Pattr = {
         'p-show': (el, value) => {
             el.style.display = value ? '' : 'none'
         },
+        'p-style': (el, value) => {
+            if (typeof value === 'string') {
+                el.style.cssText = value;
+            } else if (typeof value === 'object' && value !== null) {
+                Object.assign(el.style, value);
+            }
+        },
+        'p-class': (el, value) => {
+            if (typeof value === 'string') {
+                el.className = value;
+            } else if (Array.isArray(value)) {
+                el.className = value.join(' ');
+            } else if (typeof value === 'object' && value !== null) {
+                // Object format: { className: boolean, ... }
+                el.className = Object.keys(value)
+                    .filter(key => value[key])
+                    .join(' ');
+            }
+        },
         'p-model': (el, value) => {
             el.value = value
         },
