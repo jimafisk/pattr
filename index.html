@@ -18,8 +18,8 @@
         <h1 p-html:allow.strong.em:trim.18="title"></h1>
         <hr>
         <div>Parent Component:</div>
-        <button @click="count++">+</button>
-        <button @click="count--">-</button>
+        <button p-on:click="count++">+</button>
+        <button p-on:click="count--">-</button>
         <div p-text:trim.25="`${name} can count to: ${count}`"></div>
         <span p-show="count > 2">Greater than 2</span>
         <span p-show="count < 2">Less than 2</span>
@@ -28,20 +28,20 @@
         <section p-id="ek753" p-scope="count = count * 2; name = name + 'o';">
             <div>Child Component (*2):</div>
             <div p-text="`${name} can count to: ${count}`"></div>
-            <button @click="count++">+</button>
-            <button @click="count--">-</button>
+            <button p-on:click="count++">+</button>
+            <button p-on:click="count--">-</button>
             <input type="text" p-model="name" />
             <hr>
             <section p-id="xf9g3" p-scope="count = count + 1; name = name + ' Burns';">
                 <div>Grandchild Component (+1):</div>
                 <div p-text="`${name} can count to: ${count}`"></div>
-                <button @click="count++">+</button>
-                <button @click="count--">-</button>
+                <button p-on:click="count++">+</button>
+                <button p-on:click="count--">-</button>
                 <input type="text" p-model="name" />
             </section>
         </section>
         <hr>
-        <button @click="show = !show">
+        <button p-on:click="show = !show">
             <span p-show="!show">Show cats</span>
             <span p-show="show">Hide cats</span>
         </button>

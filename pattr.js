@@ -307,8 +307,8 @@ window.Pattr = {
         if (currentScope) { // Safety check to prevent the 'undefined' error
             Array.from(el.attributes).forEach(attribute => {
                 // 1. Event Listener Registration (Hydration Only)
-                if (isHydrating && attribute.name.startsWith('@')) {
-                    let event = attribute.name.replace('@', '');
+                if (isHydrating && attribute.name.startsWith('p-on:')) {
+                    let event = attribute.name.replace('p-on:', '');
                     el.addEventListener(event, () => {
                         eval(`with (el._scope) { (${attribute.value}) }`); 
                     });
