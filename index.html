@@ -55,10 +55,14 @@
             <h3>Cats</h3>
             <template p-for="cat of cats">
                 <div p-text="cat"></div>
+                <button p-on:click="console.log('Before:')">X</button>
             </template>
             <div p-for-key="0">Ralph</div>
+            <button p-for-key="0">X</button>
             <div p-for-key="1">Betsy</div>
+            <button p-for-key="1">X</button>
             <div p-for-key="2">Drago</div>
+            <button p-for-key="2">X</button>
             <input placeholder="Cat name" p-model="add_cat" />
             <button p-on:click="cats = [...cats, add_cat]; add_cat = '';">Add Cat</button>
         </div>

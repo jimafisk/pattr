@@ -250,10 +250,15 @@ window.Pattr = {
                 };
                 
                 // Check if there are already rendered elements with p-for-key (SSR)
-                const existingElements = [];
+                // Group elements by their p-for-key value
+                const existingElementsByKey = {};
                 let sibling = template.nextElementSibling;
                 while (sibling && sibling.hasAttribute('p-for-key')) {
-                    existingElements.push(sibling);
+                    const key = sibling.getAttribute('p-for-key');
+                    if (!existingElementsByKey[key]) {
+                        existingElementsByKey[key] = [];
+                    }
+                    existingElementsByKey[key].push(sibling);
                     sibling = sibling.nextElementSibling;
                 }
                 
@@ -262,12 +267,13 @@ window.Pattr = {
                 for (const item of iterable) {
                     const loopScope = this.createLoopScope(parentScope, varPattern, item);
                     
-                    if (existingElements[index]) {
-                        // HYDRATE: Attach scope to existing SSR element
-                        const el = existingElements[index];
-                        el._scope = loopScope;
-                        this.walkDomScoped(el, loopScope, true);
-                        template._forData.renderedElements.push(el);
+                    if (existingElementsByKey[index]) {
+                        // HYDRATE: Attach scope to existing SSR elements (may be multiple)
+                        existingElementsByKey[index].forEach(el => {
+                            el._scope = loopScope;
+                            this.walkDomScoped(el, loopScope, true);
+                            template._forData.renderedElements.push(el);
+                        });
                     } else {
                         // RENDER: No SSR element, create from template
                         const clone = template.content.cloneNode(true);
