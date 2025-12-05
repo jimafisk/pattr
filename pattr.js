@@ -218,8 +218,184 @@ window.Pattr = {
         return proxy;
     },
 
+    handleFor(template, parentScope, isHydrating) {
+        const forExpr = template.getAttribute('p-for');
+        
+        // Parse: "varPattern of/in expression"
+        // Examples: "cat of cats", "[i, cat] of cats.entries()", "{name, age} of users"
+        const match = forExpr.match(/^(?:const|let)?\s*(.+?)\s+(of|in)\s+(.+)$/);
+        
+        if (!match) {
+            console.error(`Invalid p-for expression: ${forExpr}`);
+            return;
+        }
+        
+        const [, varPattern, operator, iterableExpr] = match;
+        
+        if (isHydrating) {
+            // Store parent scope on template for refresh
+            template._scope = parentScope;
+            
+            // HYDRATION: Check for SSR-rendered elements or render from scratch
+            try {
+                // Evaluate the iterable expression
+                const iterable = eval(`with (parentScope) { (${iterableExpr}) }`);
+                
+                // Store metadata for refresh
+                template._forData = {
+                    varPattern,
+                    operator,
+                    iterableExpr,
+                    renderedElements: []
+                };
+                
+                // Check if there are already rendered elements with data-p-for-key (SSR)
+                const existingElements = [];
+                let sibling = template.nextElementSibling;
+                while (sibling && sibling.hasAttribute('data-p-for-key')) {
+                    existingElements.push(sibling);
+                    sibling = sibling.nextElementSibling;
+                }
+                
+                // Iterate through items
+                let index = 0;
+                for (const item of iterable) {
+                    const loopScope = this.createLoopScope(parentScope, varPattern, item);
+                    
+                    if (existingElements[index]) {
+                        // HYDRATE: Attach scope to existing SSR element
+                        const el = existingElements[index];
+                        el._scope = loopScope;
+                        this.walkDomScoped(el, loopScope, true);
+                        template._forData.renderedElements.push(el);
+                    } else {
+                        // RENDER: No SSR element, create from template
+                        const clone = template.content.cloneNode(true);
+                        const elements = Array.from(clone.children);
+                        
+                        elements.forEach(el => {
+                            el._scope = loopScope;
+                            el.setAttribute('data-p-for-key', index);
+                            this.walkDomScoped(el, loopScope, true);
+                        });
+                        
+                        // Insert into DOM after template or last rendered element
+                        const insertAfter = template._forData.renderedElements[template._forData.renderedElements.length - 1] || template;
+                        insertAfter.parentNode.insertBefore(clone, insertAfter.nextSibling);
+                        template._forData.renderedElements.push(...elements);
+                    }
+                    
+                    index++;
+                }
+            } catch (e) {
+                console.error(`Error in p-for hydration: ${forExpr}`, e);
+            }
+        } else {
+            // REFRESH: Update items if array changed
+            try {
+                // Use template's stored scope from hydration
+                const templateScope = template._scope || parentScope;
+                const iterable = eval(`with (templateScope) { (${iterableExpr}) }`);
+                const forData = template._forData;
+                
+                if (!forData) return;
+                
+                // Simple strategy: remove all and re-render
+                // (More efficient diff algorithm can be added later)
+                forData.renderedElements.forEach(el => el.remove());
+                forData.renderedElements = [];
+                
+                // Re-render all items
+                let index = 0;
+                for (const item of iterable) {
+                    const clone = template.content.cloneNode(true);
+                    const loopScope = this.createLoopScope(templateScope, forData.varPattern, item);
+                    
+                    const elements = Array.from(clone.children);
+                    elements.forEach(el => {
+                        el._scope = loopScope;
+                        el.setAttribute('data-p-for-key', index);
+                        this.walkDomScoped(el, loopScope, false);
+                    });
+                    
+                    template.parentNode.insertBefore(clone, template.nextSibling);
+                    forData.renderedElements.push(...elements);
+                    index++;
+                }
+            } catch (e) {
+                console.error(`Error in p-for refresh: ${forExpr}`, e);
+            }
+        }
+    },
+
+    createLoopScope(parentScope, varPattern, item) {
+        // Create a plain object with loop variables
+        const loopData = {};
+        
+        // Handle different variable patterns
+        varPattern = varPattern.trim();
+        
+        if (varPattern.startsWith('[')) {
+            // Array destructuring: [i, cat] or [key, value]
+            const vars = varPattern.slice(1, -1).split(',').map(v => v.trim());
+            if (Array.isArray(item)) {
+                vars.forEach((v, i) => loopData[v] = item[i]);
+            } else {
+                // Item is not array, treat as single value
+                loopData[vars[0]] = item;
+            }
+        } else if (varPattern.startsWith('{')) {
+            // Object destructuring: {name, age}
+            const vars = varPattern.slice(1, -1).split(',').map(v => v.trim());
+            vars.forEach(v => {
+                // Handle renamed properties: {name: firstName}
+                const [key, alias] = v.split(':').map(s => s.trim());
+                loopData[alias || key] = item[key];
+            });
+        } else {
+            // Simple variable: cat
+            loopData[varPattern] = item;
+        }
+        
+        // Create scope that inherits from parent
+        if (!parentScope) {
+            console.error('parentScope is undefined in createLoopScope');
+            return new Proxy({}, {get: () => undefined, set: () => false});
+        }
+        
+        const parentTarget = parentScope._p_target || parentScope;
+        if (!parentTarget || typeof parentTarget !== 'object') {
+            console.error('Invalid parentTarget:', parentTarget);
+            return new Proxy(loopData, {
+                get: (target, key) => target[key],
+                set: (target, key, value) => {target[key] = value; return true;}
+            });
+        }
+        
+        const loopTarget = Object.create(parentTarget);
+        Object.assign(loopTarget, loopData);
+        
+        // Add _p_target property
+        const proxy = new Proxy(loopTarget, {
+            get: (target, key) => target[key],
+            set: (target, key, value) => {
+                target[key] = value;
+                return true;
+            }
+        });
+        proxy._p_target = loopTarget;
+        
+        return proxy;
+    },
+
     walkDomScoped(el, parentScope, isHydrating = false) {
         let currentScope = parentScope;
+
+        // --- HANDLE p-for LOOPS ---
+        if (el.tagName === 'TEMPLATE' && el.hasAttribute('p-for')) {
+            this.handleFor(el, parentScope, isHydrating);
+            return; // Don't process template children directly
+        }
 
         // --- SCOPE DETERMINATION & CREATION ---
         if (el.hasAttribute('p-scope')) {
@@ -344,7 +520,9 @@ window.Pattr = {
                 // Check if attribute is a directive (with or without modifiers)
                 const parsed = this.parseDirectiveModifiers(attribute.name);
                 if (Object.keys(this.directives).includes(parsed.directive)) {
-                    const value = eval(`with (currentScope) { (${attribute.value}) }`);
+                    // Use el._scope if it exists (for loop items), otherwise use currentScope
+                    const evalScope = el._scope || currentScope;
+                    const value = eval(`with (evalScope) { (${attribute.value}) }`);
                     this.directives[parsed.directive](el, value, parsed.modifiers);
                 }
             });

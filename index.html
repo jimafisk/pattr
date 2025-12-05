@@ -12,7 +12,9 @@
         </script>
         <script id="p-local-data" type="application/json">
             {
-                "cats": false,
+                "show_cats": false,
+                "cats": ["Ralph", "Betsy", "Drago"],
+                "add_cat": "",
                 "emoji": false
             }
         </script>
@@ -45,15 +47,20 @@
             </section>
         </section>
         <hr>
-        <button p-on:click="cats = !cats">
-            <span p-show="!cats">Show cats</span>
-            <span p-show="cats">Hide cats</span>
+        <button p-on:click="show_cats = !show_cats">
+            <span p-show="!show_cats">Show cats</span>
+            <span p-show="show_cats">Hide cats</span>
         </button>
-        <div class="cats-list" p-style="cats ? 'max-height: 200px' : 'max-height: 0'">
+        <div class="cats-list" p-style="show_cats ? 'max-height: 300px' : 'max-height: 0'">
             <h3>Cats</h3>
-            <div>Ralph</div>
-            <div>Betsy</div>
-            <div>Drago</div>
+            <template p-for="cat of cats">
+                <div p-text="cat"></div>
+            </template>
+            <div data-p-for-key="0">Ralph</div>
+            <div data-p-for-key="1">Betsy</div>
+            <div data-p-for-key="2">Drago</div>
+            <input placeholder="Cat name" p-model="add_cat" />
+            <button p-on:click="cats = [...cats, add_cat]">Add Cat</button>
         </div>
         <style>
             .cats-list {
