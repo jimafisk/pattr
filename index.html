@@ -25,14 +25,14 @@
         <span p-show="count < 2">Less than 2</span>
         <input type="text" p-model="name" />
         <hr>
-        <section p-id="ek753" p-data="count = count * 2; name = name + 'o';">
+        <section p-id="ek753" p-scope="count = count * 2; name = name + 'o';">
             <div>Child Component (*2):</div>
             <div p-text="`${name} can count to: ${count}`"></div>
             <button @click="count++">+</button>
             <button @click="count--">-</button>
             <input type="text" p-model="name" />
             <hr>
-            <section p-id="xf9g3" p-data="count = count + 1; name = name + ' Burns';">
+            <section p-id="xf9g3" p-scope="count = count + 1; name = name + ' Burns';">
                 <div>Grandchild Component (+1):</div>
                 <div p-text="`${name} can count to: ${count}`"></div>
                 <button @click="count++">+</button>

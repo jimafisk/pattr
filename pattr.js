@@ -163,7 +163,7 @@ window.Pattr = {
 
     buildScopeData(el, parentData) {
         let currentData = parentData;
-        if (el.hasAttribute('p-data')) {
+        if (el.hasAttribute('p-scope')) {
             const dataId = el.getAttribute('p-id') || 'missing_p-id';
             if (!parentData._p_children) {
                 parentData._p_children = {};
@@ -172,7 +172,7 @@ window.Pattr = {
                 parentData._p_children[dataId] = {};
             }
             currentData = parentData._p_children[dataId]; 
-            currentData._p_data = el.getAttribute('p-data');
+            currentData._p_scope = el.getAttribute('p-scope');
         }
         let child = el.firstElementChild;
         while (child) {
@@ -203,7 +203,7 @@ window.Pattr = {
         let currentScope = parentScope;
 
         // --- SCOPE DETERMINATION & CREATION ---
-        if (el.hasAttribute('p-data')) {
+        if (el.hasAttribute('p-scope')) {
             // A. HYDRATION PHASE (One-Time Setup)
             if (isHydrating) {
                 const dataId = el.getAttribute('p-id');
@@ -212,11 +212,11 @@ window.Pattr = {
                 // 1. Create new inherited Proxy
                 currentScope = this.observe(localRawData, parentScope); 
                 
-                // 2. Execute p-data assignments (e.g., count = count * 2)
+                // 2. Execute p-scope assignments (e.g., count = count * 2)
                 try {
-                    eval(`with (currentScope) { ${localRawData._p_data} }`);
+                    eval(`with (currentScope) { ${localRawData._p_scope} }`);
                 } catch (e) {
-                    console.error(`Error executing p-data expression on ${dataId}:`, e);
+                    console.error(`Error executing p-scope expression on ${dataId}:`, e);
                 }
             } else {
                 // B. REFRESH PHASE (Use stored scope)
@@ -226,9 +226,9 @@ window.Pattr = {
                 if (!currentScope) {
                     currentScope = parentScope;
                 } else {
-                    // Check if parent values changed - if so, selectively re-execute p-data
-                    const pDataExpr = el.getAttribute('p-data');
-                    if (pDataExpr && currentScope._p_target) {
+                    // Check if parent values changed - if so, selectively re-execute p-scope
+                    const pScopeExpr = el.getAttribute('p-scope');
+                    if (pScopeExpr && currentScope._p_target) {
                         // Get parent scope
                         const parentProto = Object.getPrototypeOf(currentScope._p_target);
                         
@@ -251,12 +251,12 @@ window.Pattr = {
                         // If any parent changed, selectively re-execute statements
                         if (changedParentVars.size > 0) {
                             try {
-                                // Split p-data into individual statements
-                                const statements = pDataExpr.split(';').map(s => s.trim()).filter(s => s);
+                                // Split p-scope into individual statements
+                                const statements = pScopeExpr.split(';').map(s => s.trim()).filter(s => s);
                                 
                                 const tempScope = new Proxy(currentScope._p_target, {
                                     get: (target, key) => {
-                                        if (key === '_p_target' || key === '_p_children' || key === '_p_data') {
+                                        if (key === '_p_target' || key === '_p_children' || key === '_p_scope') {
                                             return target[key];
                                         }
                                         return parentProto[key];
@@ -288,7 +288,7 @@ window.Pattr = {
                                     }
                                 });
                             } catch (e) {
-                                console.error(`Error re-executing p-data expression:`, e);
+                                console.error(`Error re-executing p-scope expression:`, e);
                             }
                         }
                     }
