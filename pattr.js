@@ -249,10 +249,10 @@ window.Pattr = {
                     renderedElements: []
                 };
                 
-                // Check if there are already rendered elements with data-p-for-key (SSR)
+                // Check if there are already rendered elements with p-for-key (SSR)
                 const existingElements = [];
                 let sibling = template.nextElementSibling;
-                while (sibling && sibling.hasAttribute('data-p-for-key')) {
+                while (sibling && sibling.hasAttribute('p-for-key')) {
                     existingElements.push(sibling);
                     sibling = sibling.nextElementSibling;
                 }
@@ -275,7 +275,7 @@ window.Pattr = {
                         
                         elements.forEach(el => {
                             el._scope = loopScope;
-                            el.setAttribute('data-p-for-key', index);
+                            el.setAttribute('p-for-key', index);
                             this.walkDomScoped(el, loopScope, true);
                         });
                         
@@ -292,13 +292,14 @@ window.Pattr = {
             }
         } else {
             // REFRESH: Update items if array changed
+            const forData = template._forData;
+            if (!forData) return; // Not hydrated yet, skip
+            
             try {
-                // Use template's stored scope from hydration
+                // Use template's stored scope from hydration (set during hydration phase)
                 const templateScope = template._scope || parentScope;
-                const iterable = eval(`with (templateScope) { (${iterableExpr}) }`);
-                const forData = template._forData;
                 
-                if (!forData) return;
+                const iterable = eval(`with (templateScope) { (${iterableExpr}) }`);
                 
                 // Simple strategy: remove all and re-render
                 // (More efficient diff algorithm can be added later)
@@ -314,7 +315,7 @@ window.Pattr = {
                     const elements = Array.from(clone.children);
                     elements.forEach(el => {
                         el._scope = loopScope;
-                        el.setAttribute('data-p-for-key', index);
+                        el.setAttribute('p-for-key', index);
                         this.walkDomScoped(el, loopScope, false);
                     });
                     
