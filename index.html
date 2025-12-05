@@ -55,7 +55,7 @@
             <h3>Cats</h3>
             <template p-for="cat of cats">
                 <div p-text="cat"></div>
-                <button p-on:click="console.log('Before:')">X</button>
+                <button p-on:click="console.log('Before:', cats); cats = cats.filter(c => c !== cat); console.log('After:', cats);">X</button>
             </template>
             <div p-for-key="0">Ralph</div>
             <button p-for-key="0">X</button>

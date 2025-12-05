@@ -322,7 +322,8 @@ window.Pattr = {
                     elements.forEach(el => {
                         el._scope = loopScope;
                         el.setAttribute('p-for-key', index);
-                        this.walkDomScoped(el, loopScope, false);
+                        // Important: Pass true for isHydrating to register event listeners
+                        this.walkDomScoped(el, loopScope, true);
                     });
                     
                     template.parentNode.insertBefore(clone, template.nextSibling);
@@ -538,7 +539,7 @@ window.Pattr = {
         // --- RECURSION ---
         let child = el.firstElementChild;
         while (child) {
-            this.walkDomScoped(child, currentScope, isHydrating); 
+            this.walkDomScoped(child, currentScope, isHydrating);
             child = child.nextElementSibling;
         }
     }
