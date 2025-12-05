@@ -387,7 +387,13 @@ window.Pattr = {
         const proxy = new Proxy(loopTarget, {
             get: (target, key) => target[key],
             set: (target, key, value) => {
-                target[key] = value;
+                // If setting a loop variable (from loopData), set locally
+                if (key in loopData) {
+                    target[key] = value;
+                } else {
+                    // Otherwise, write through to parent (enables parent scope updates)
+                    parentTarget[key] = value;
+                }
                 return true;
             }
         });
