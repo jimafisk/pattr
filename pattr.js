@@ -506,7 +506,7 @@ window.Pattr = {
                 if (isHydrating && attribute.name.startsWith('p-on:')) {
                     let event = attribute.name.replace('p-on:', '');
                     el.addEventListener(event, () => {
-                        eval(`with (el._scope) { (${attribute.value}) }`); 
+                        eval(`with (el._scope) { ${attribute.value} }`); 
                     });
                 }
                 

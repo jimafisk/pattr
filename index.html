@@ -60,7 +60,7 @@
             <div p-for-key="1">Betsy</div>
             <div p-for-key="2">Drago</div>
             <input placeholder="Cat name" p-model="add_cat" />
-            <button p-on:click="cats = [...cats, add_cat]">Add Cat</button>
+            <button p-on:click="cats = [...cats, add_cat]; add_cat = '';">Add Cat</button>
         </div>
         <style>
             .cats-list {
