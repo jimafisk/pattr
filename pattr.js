@@ -200,6 +200,15 @@ window.Pattr = {
         }
     },
 
+    setForTemplateRecursive(element, template) {
+        // Set _forTemplate on this element
+        element._forTemplate = template;
+        // Set _forTemplate on all descendants
+        Array.from(element.children).forEach(child => {
+            this.setForTemplateRecursive(child, template);
+        });
+    },
+
     observe(data, parentScope) {
         const localTarget = data;
         let proxyTarget = localTarget;
@@ -271,6 +280,8 @@ window.Pattr = {
                         // HYDRATE: Attach scope to existing SSR elements (may be multiple)
                         existingElementsByKey[index].forEach(el => {
                             el._scope = loopScope;
+                            // Set _forTemplate on this element and all descendants
+                            this.setForTemplateRecursive(el, template);
                             this.walkDomScoped(el, loopScope, true);
                             template._forData.renderedElements.push(el);
                         });
@@ -281,8 +292,10 @@ window.Pattr = {
                         
                         elements.forEach(el => {
                             el._scope = loopScope;
-                            el.setAttribute('p-for-key', index);
+                            // Set _forTemplate on this element and all descendants
+                            this.setForTemplateRecursive(el, template);
                             this.walkDomScoped(el, loopScope, true);
+                            template._forData.renderedElements.push(el);
                         });
                         
                         // Insert into DOM after template or last rendered element
@@ -293,6 +306,16 @@ window.Pattr = {
                     
                     index++;
                 }
+                
+                // RECONCILIATION: Remove any SSR elements that don't have matching data
+                // (e.g., elements with p-for-key >= array.length)
+                Object.keys(existingElementsByKey).forEach(key => {
+                    const keyIndex = parseInt(key);
+                    if (keyIndex >= index) {
+                        // This SSR element doesn't have corresponding data - remove it
+                        existingElementsByKey[key].forEach(el => el.remove());
+                    }
+                });
             } catch (e) {
                 console.error(`Error in p-for hydration: ${forExpr}`, e);
             }
@@ -305,7 +328,11 @@ window.Pattr = {
                 // Use template's stored scope from hydration (set during hydration phase)
                 const templateScope = template._scope || parentScope;
                 
-                const iterable = eval(`with (templateScope) { (${iterableExpr}) }`);
+                console.log('Template scope cats:', templateScope.cats);
+                console.log('Template scope _p_target cats:', templateScope._p_target?.cats);
+                
+                // Use _p_target to read the actual updated values (proxy may be stale)
+                const iterable = eval(`with (templateScope._p_target || templateScope) { (${iterableExpr}) }`);
                 
                 // Simple strategy: remove all and re-render
                 // (More efficient diff algorithm can be added later)
@@ -314,13 +341,19 @@ window.Pattr = {
                 
                 // Re-render all items
                 let index = 0;
+                console.log('Re-rendering. Array length:', iterable.length || [...iterable].length);
                 for (const item of iterable) {
+                    console.log('Rendering item', index, ':', item);
                     const clone = template.content.cloneNode(true);
                     const loopScope = this.createLoopScope(templateScope, forData.varPattern, item);
                     
                     const elements = Array.from(clone.children);
+                    console.log('Template has', elements.length, 'children');
                     elements.forEach(el => {
+                        console.log(el)
                         el._scope = loopScope;
+                        // Set _forTemplate on this element and all descendants
+                        this.setForTemplateRecursive(el, template);
                         el.setAttribute('p-for-key', index);
                         // Important: Pass true for isHydrating to register event listeners
                         this.walkDomScoped(el, loopScope, true);
@@ -519,7 +552,13 @@ window.Pattr = {
                 if (isHydrating && attribute.name.startsWith('p-on:')) {
                     let event = attribute.name.replace('p-on:', '');
                     el.addEventListener(event, () => {
-                        eval(`with (el._scope) { ${attribute.value} }`); 
+                        eval(`with (el._scope) { ${attribute.value} }`);
+                        
+                        // If this element is inside a p-for loop, refresh that loop
+                        if (el._forTemplate) {
+                            console.log("in For!")
+                            this.handleFor(el._forTemplate, el._forTemplate._scope, false);
+                        }
                     });
                 }
                 
