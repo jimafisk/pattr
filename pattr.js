@@ -209,6 +209,22 @@ window.Pattr = {
         });
     },
 
+    refreshAllLoops(el = this.root) {
+        console.log("refreshing all loops");
+        // Find all p-for templates and refresh them
+        if (el.tagName === 'TEMPLATE' && el.hasAttribute('p-for')) {
+            this.handleFor(el, this.data, false);
+            return; // Don't recurse into template contents
+        }
+        
+        // Recurse through children
+        let child = el.firstElementChild;
+        while (child) {
+            this.refreshAllLoops(child);
+            child = child.nextElementSibling;
+        }
+    },
+
     observe(data, parentScope) {
         const localTarget = data;
         let proxyTarget = localTarget;
@@ -217,13 +233,20 @@ window.Pattr = {
             Object.assign(proxyTarget, localTarget);
         }
         const proxy = new Proxy(proxyTarget, {
+            get: (target, key) => {
+                // Special handling for _p_target - return the target itself
+                if (key === '_p_target') {
+                    return target;
+                }
+                // Always read from the target to get fresh values
+                return target[key];
+            },
             set: (target, key, value) => {
                 target[key] = value;
                 this.walkDomScoped(this.root, this.data, false);
                 return true;
             }
         });
-        proxy._p_target = proxyTarget;
         return proxy;
     },
 
@@ -325,10 +348,12 @@ window.Pattr = {
             if (!forData) return; // Not hydrated yet, skip
             
             try {
-                // Use template's stored scope from hydration (set during hydration phase)
+                // Use the parentScope passed in (this.data from refreshAllLoops)
+                // NOT template._scope which becomes stale after mutations
+                //const templateScope = parentScope;
                 const templateScope = template._scope || parentScope;
                 
-                // Use _p_target to read the actual updated values (proxy may be stale)
+                // Use _p_target to read the actual updated values
                 const iterable = eval(`with (templateScope._p_target || templateScope) { (${iterableExpr}) }`);
                 
                 // Simple strategy: remove all and re-render
@@ -417,7 +442,7 @@ window.Pattr = {
                 if (key in loopData) {
                     target[key] = value;
                 } else {
-                    // Otherwise, write through to parent (enables parent scope updates)
+                    // Otherwise, write through to parent target
                     parentTarget[key] = value;
                 }
                 return true;
@@ -544,14 +569,22 @@ window.Pattr = {
                 // 1. Event Listener Registration (Hydration Only)
                 if (isHydrating && attribute.name.startsWith('p-on:')) {
                     let event = attribute.name.replace('p-on:', '');
+                    // Store whether this element is in a loop
+                    //const inLoop = !!el._forTemplate;
                     el.addEventListener(event, () => {
+                        // For elements OUTSIDE loops, use this.data to avoid stale scope
+                        // For elements INSIDE loops, use el._scope (has loop variables)
+                        //const scope = inLoop ? el._scope : this.data;
+                        //console.log('Event handler running:', attribute.value, 'inLoop:', inLoop);
+                        //console.log('scope.cats before:', scope.cats);
+                        //console.log('scope._p_target.cats before:', scope._p_target?.cats);
+                        //eval(`with (scope) { ${attribute.value} }`);
                         eval(`with (el._scope) { ${attribute.value} }`);
+                        //console.log('scope.cats after:', scope.cats);
+                        //console.log('scope._p_target.cats after:', scope._p_target?.cats);
                         
-                        // If this element is inside a p-for loop, refresh that loop
-                        console.log(el)
-                        if (el._forTemplate) {
-                            this.handleFor(el._forTemplate, el._forTemplate._scope, false);
-                        }
+                        // Refresh ALL loops after any event (data may have changed)
+                        this.refreshAllLoops();
                     });
                 }
                 
