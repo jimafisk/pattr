@@ -328,9 +328,6 @@ window.Pattr = {
                 // Use template's stored scope from hydration (set during hydration phase)
                 const templateScope = template._scope || parentScope;
                 
-                console.log('Template scope cats:', templateScope.cats);
-                console.log('Template scope _p_target cats:', templateScope._p_target?.cats);
-                
                 // Use _p_target to read the actual updated values (proxy may be stale)
                 const iterable = eval(`with (templateScope._p_target || templateScope) { (${iterableExpr}) }`);
                 
@@ -341,16 +338,12 @@ window.Pattr = {
                 
                 // Re-render all items
                 let index = 0;
-                console.log('Re-rendering. Array length:', iterable.length || [...iterable].length);
                 for (const item of iterable) {
-                    console.log('Rendering item', index, ':', item);
                     const clone = template.content.cloneNode(true);
                     const loopScope = this.createLoopScope(templateScope, forData.varPattern, item);
                     
                     const elements = Array.from(clone.children);
-                    console.log('Template has', elements.length, 'children');
                     elements.forEach(el => {
-                        console.log(el)
                         el._scope = loopScope;
                         // Set _forTemplate on this element and all descendants
                         this.setForTemplateRecursive(el, template);
@@ -555,8 +548,8 @@ window.Pattr = {
                         eval(`with (el._scope) { ${attribute.value} }`);
                         
                         // If this element is inside a p-for loop, refresh that loop
+                        console.log(el)
                         if (el._forTemplate) {
-                            console.log("in For!")
                             this.handleFor(el._forTemplate, el._forTemplate._scope, false);
                         }
                     });
