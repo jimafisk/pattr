@@ -210,7 +210,6 @@ window.Pattr = {
     },
 
     refreshAllLoops(el = this.root) {
-        console.log("refreshing all loops");
         // Find all p-for templates and refresh them
         if (el.tagName === 'TEMPLATE' && el.hasAttribute('p-for')) {
             this.handleFor(el, this.data, false);
@@ -349,9 +348,7 @@ window.Pattr = {
             
             try {
                 // Use the parentScope passed in (this.data from refreshAllLoops)
-                // NOT template._scope which becomes stale after mutations
-                //const templateScope = parentScope;
-                const templateScope = template._scope || parentScope;
+                const templateScope = parentScope;
                 
                 // Use _p_target to read the actual updated values
                 const iterable = eval(`with (templateScope._p_target || templateScope) { (${iterableExpr}) }`);
@@ -569,19 +566,8 @@ window.Pattr = {
                 // 1. Event Listener Registration (Hydration Only)
                 if (isHydrating && attribute.name.startsWith('p-on:')) {
                     let event = attribute.name.replace('p-on:', '');
-                    // Store whether this element is in a loop
-                    //const inLoop = !!el._forTemplate;
                     el.addEventListener(event, () => {
-                        // For elements OUTSIDE loops, use this.data to avoid stale scope
-                        // For elements INSIDE loops, use el._scope (has loop variables)
-                        //const scope = inLoop ? el._scope : this.data;
-                        //console.log('Event handler running:', attribute.value, 'inLoop:', inLoop);
-                        //console.log('scope.cats before:', scope.cats);
-                        //console.log('scope._p_target.cats before:', scope._p_target?.cats);
-                        //eval(`with (scope) { ${attribute.value} }`);
                         eval(`with (el._scope) { ${attribute.value} }`);
-                        //console.log('scope.cats after:', scope.cats);
-                        //console.log('scope._p_target.cats after:', scope._p_target?.cats);
                         
                         // Refresh ALL loops after any event (data may have changed)
                         this.refreshAllLoops();
