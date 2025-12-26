@@ -178,6 +178,7 @@ window.Pattr = {
         this.buildScopeData(this.root, this.rawData);
         this.data = this.observe(this.rawData)
         this.walkDomScoped(this.root, this.data, true);
+        this.refreshAllLoops();
     },
 
     buildScopeData(el, parentData) {
