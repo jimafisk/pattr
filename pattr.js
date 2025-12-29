@@ -1,4 +1,5 @@
 window.Pattr = {
+    isExecutingScope: false,
     directives: {
         'p-text': (el, value, modifiers = {}) => {
             let text = String(value);
@@ -243,7 +244,10 @@ window.Pattr = {
             },
             set: (target, key, value) => {
                 target[key] = value;
-                this.walkDomScoped(this.root, this.data, false);
+                // Skip DOM walk if we're executing p-scope statements
+                if (!this.isExecutingScope) {
+                    this.walkDomScoped(this.root, this.data, false);
+                }
                 return true;
             }
         });
@@ -470,10 +474,19 @@ window.Pattr = {
                 // 1. Create new inherited Proxy
                 currentScope = this.observe(localRawData, parentScope); 
                 
-                // 2. Execute p-scope assignments (e.g., count = count * 2)
+                // 2. Execute p-scope assignments sequentially (e.g., count = count + 5; count = count * 2)
                 try {
-                    eval(`with (currentScope) { ${localRawData._p_scope} }`);
+                    // Split p-scope into individual statements
+                    const statements = localRawData._p_scope.split(';').map(s => s.trim()).filter(s => s);
+                    
+                    // Execute all statements without triggering DOM walks in between
+                    this.isExecutingScope = true;
+                    statements.forEach(stmt => {
+                        eval(`with (currentScope) { ${stmt} }`);
+                    });
+                    this.isExecutingScope = false;
                 } catch (e) {
+                    this.isExecutingScope = false;
                     console.error(`Error executing p-scope expression on ${dataId}:`, e);
                 }
             } else {
@@ -506,9 +519,18 @@ window.Pattr = {
                             }
                         }
                         
-                        // If any parent changed, selectively re-execute statements
+                        // If any parent changed, re-execute ALL statements
+                        // (statements may depend on each other sequentially)
                         if (changedParentVars.size > 0) {
                             try {
+                                // Clear child scope's own properties (except internal ones)
+                                // so we re-apply transformations from fresh parent values
+                                for (let key in currentScope._p_target) {
+                                    if (currentScope._p_target.hasOwnProperty(key) && !key.startsWith('_p_')) {
+                                        delete currentScope._p_target[key];
+                                    }
+                                }
+                                
                                 // Split p-scope into individual statements
                                 const statements = pScopeExpr.split(';').map(s => s.trim()).filter(s => s);
                                 
@@ -517,6 +539,12 @@ window.Pattr = {
                                         if (key === '_p_target' || key === '_p_children' || key === '_p_scope') {
                                             return target[key];
                                         }
+                                        // Check if value exists in target (set by earlier statements)
+                                        // Use hasOwnProperty to avoid looking up prototype chain
+                                        if (target.hasOwnProperty(key)) {
+                                            return target[key];
+                                        }
+                                        // Fall back to parent value
                                         return parentProto[key];
                                     },
                                     set: (target, key, value) => {
@@ -524,28 +552,16 @@ window.Pattr = {
                                         return true;
                                     }
                                 });
-                                void tempScope; // Explicit reference for linter
                                 
-                                // Only re-execute statements that depend on changed parent variables
+                                // Execute ALL statements sequentially without triggering DOM walks
+                                // We must re-run all because later statements may depend on earlier ones
+                                this.isExecutingScope = true;
                                 statements.forEach(stmt => {
-                                    // Check if statement uses any changed parent variable on RHS
-                                    let shouldExecute = false;
-                                    changedParentVars.forEach(varName => {
-                                        // Simple heuristic: check if variable appears on right side of assignment
-                                        const parts = stmt.split('=');
-                                        if (parts.length > 1) {
-                                            const rhs = parts.slice(1).join('=');
-                                            if (rhs.includes(varName)) {
-                                                shouldExecute = true;
-                                            }
-                                        }
-                                    });
-                                    
-                                    if (shouldExecute) {
-                                        eval(`with (tempScope) { ${stmt} }`);
-                                    }
+                                    eval(`with (tempScope) { ${stmt} }`);
                                 });
+                                this.isExecutingScope = false;
                             } catch (e) {
+                                this.isExecutingScope = false;
                                 console.error(`Error re-executing p-scope expression:`, e);
                             }
                         }

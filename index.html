@@ -31,14 +31,14 @@
         <input type="text" p-model="name" p-on:focus="emoji = true" p-on:blur="emoji = false" />
         <span p-show="emoji">🤓</span>
         <hr>
-        <section p-id="ek753" p-scope="count = count * 2; name = name + 'o';">
+        <section p-id="ek753" p-scope="count = count + 5; count = count * 2; name = name + 'o'; name = name + 'b';">
             <div>Child Component (*2):</div>
             <div p-text="`${name} can count to: ${count}`"></div>
             <button p-on:click="count++">+</button>
             <button p-on:click="count--">-</button>
             <input type="text" p-model="name" />
             <hr>
-            <section p-id="xf9g3" p-scope="count = count + 1; name = name + ' Burns';">
+            <section p-id="xf9g3" p-scope="count = count * 2; count = count + 1; name = name + ' Burns';">
                 <div>Grandchild Component (+1):</div>
                 <div p-text="`${name} can count to: ${count}`"></div>
                 <button p-on:click="count++">+</button>
