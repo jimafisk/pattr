@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" p-id="root" p-scope="show_cats = false; cats = ['Ralph', 'Betsy', 'Drago']; add_cat = ''; emoji = false;">
+<html lang="en" p-id="root" p-scope="show_cats = false; cats = ['Ralph', 'Betsy', 'Drago']; add_cat = ''; emoji = false; tab='Pattr' + name;">
     <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <script src="/pattr.js" defer></script>
@@ -10,6 +10,7 @@
                 "count": 2
             }
         </script>
+        <title p-scope="" p-id="tab-title" p-text="`${tab}`"></title>
     </head>
     <body>
         <h1 p-html:allow.strong.em:trim.18="title"></h1>
