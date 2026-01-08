@@ -129,6 +129,20 @@ window.Pattr = {
         'p-model': (el, value) => {
             el.value = value
         },
+        'p-attr': (el, value) => {
+            // Set multiple attributes from an object
+            // Usage: p-attr="{ 'data-id': userId, 'data-name': userName, href: link }"
+            if (typeof value === 'object' && value !== null) {
+                Object.keys(value).forEach(attrName => {
+                    const attrValue = value[attrName];
+                    if (attrValue === null || attrValue === undefined || attrValue === false) {
+                        el.removeAttribute(attrName);
+                    } else {
+                        el.setAttribute(attrName, String(attrValue));
+                    }
+                });
+            }
+        },
     },
     
     parseDirectiveModifiers(attrName) {

@@ -93,6 +93,11 @@ Both data sources are merged and available throughout your app.
 <div p-class="active"></div>
 ```
 
+**String syntax with template literals**
+```html
+<div p-class="`base-class ${isActive ? 'active' : ''} ${hasError ? 'error' : ''}`">
+```
+
 **Array syntax:**
 ```html
 <div p-class="['btn', 'btn-primary']"></div>
@@ -101,6 +106,39 @@ Both data sources are merged and available throughout your app.
 **Object syntax (conditional classes):**
 ```html
 <div p-class="{ active: isActive, disabled: !isEnabled }"></div>
+```
+
+### `p-attr` - Set Attributes
+
+**Multiple attributes**
+```html
+<div p-attr="{ 
+  'data-id': userId, 
+  'data-name': userName, 
+  'data-status': status,
+  'aria-label': ariaText,
+  'href': linkUrl 
+}">
+```
+
+**Attribute with expressions**
+```html
+<div p-attr="{ 'data-number': number + 5, 'data-label': 'User: ' + userName }">
+```
+
+**Attribute with template literals**
+```html
+<div p-attr="{ 'data-info': `${name} - ${age} years old` }">
+```
+
+**Attribute with ternary operator**
+```html
+<div p-attr="{ 'data-status': isActive ? 'active' : 'inactive' }">
+```
+
+**Atrribute with method call**
+```html
+<div p-attr="{ 'data-upper': userName.toUpperCase() }">
 ```
 
 ### `p-model` - Two-Way Data Binding
